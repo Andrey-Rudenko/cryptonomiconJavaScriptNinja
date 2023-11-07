@@ -25,11 +25,15 @@
               placeholder="Например DOGE"
             />
           </div>
-          <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-              BTC
+          <div
+           class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+            <span
+            v-for="(coin, inx) in coins" :key="inx"
+            @click="useCoin(coin)"
+             class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+              {{ coin }}
             </span>
-            <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+            <!-- <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
               DOGE
             </span>
             <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
@@ -37,9 +41,9 @@
             </span>
             <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
               CHD
-            </span>
+            </span> -->
           </div>
-          <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+          <!-- <div class="text-sm text-red-600">Такой тикер уже добавлен</div> -->
         </div>
       </div>
       <button
@@ -70,7 +74,7 @@
             'border-4' : sel === tick
       
           }"
-          @click="sel = tick"
+          @click="select(tick)"
           class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
         >
           <div class="px-4 py-5 sm:p-6 text-center" >
@@ -138,16 +142,8 @@
       </h3>
       <div class="flex items-end border-gray-600 border-b border-l h-64">
         <div
-          class="bg-purple-800 border w-10 h-24"
-        ></div>
-        <div
-          class="bg-purple-800 border w-10 h-32"
-        ></div>
-        <div
-          class="bg-purple-800 border w-10 h-48"
-        ></div>
-        <div
-          class="bg-purple-800 border w-10 h-16"
+      v-for="(bar, idx) in normalizeGraph()" :key="idx" :style="{ height: `${bar}%` }"
+          class="bg-purple-800 border w-10"
         ></div>
       </div>
       <button 
@@ -178,6 +174,7 @@
         </svg>
       </button>
     </section>
+
   </div>
 </div>
 </template>
@@ -189,11 +186,10 @@ export default {
     return {
       newValueTicker: "",
       listOfTickers: [
-        {value: "WTF", price: "---"}, 
-        {value: "BTC", price: "---"},
-        {value: "DOGE", price: "---"},
       ],
-      sel: null
+      sel: null,
+      graph: [],
+      coins: ["BTC", "DOGE", "BCH", "CHD"],
     }
   },
   methods: {
@@ -202,10 +198,35 @@ export default {
         value: this.newValueTicker, price: "---"
       }
       this.listOfTickers.push(newTicker)
+      setInterval(async() => {
+        const f = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${newTicker.value}&tsyms=USD&api_key=8ca3429ac4ad65286e87bd9cf785cd74faa2a4dd429142e498eaa0818a259ea4`)
+        const data = await f.json()
+        console.log(data)
+        this.listOfTickers.find((t) => t.value === newTicker.value).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2)
+        if (this.sel?.value === newTicker.value) {
+          this.graph.push(data.USD);
+          console.log(this.graph)
+        }
+      }, 5000)
+
       this.newValueTicker = ""
     },
     deleteTicker(tickToDelete) {
       this.listOfTickers = this.listOfTickers.filter((t) => t != tickToDelete)
+    },
+    normalizeGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+      return this.graph.map(
+        price => 5 + ((price - minValue) * 95 / (maxValue -minValue))
+      )
+    },
+    select(ticker) {
+      this.sel = ticker;
+      this.graph = []
+    },
+    useCoin(coin) {
+      this.newValueTicker = coin
     }
   }
 }
